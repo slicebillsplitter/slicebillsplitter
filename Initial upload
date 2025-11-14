@@ -1,0 +1,1261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Slice | Smart Bill Splitter, Simplified.</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f7fb;--panel:rgba(255,255,255,0.72);--panel-border:rgba(15,23,42,0.06);
+    --text:#0f172a;--muted:#64748b;--primary:#2563eb;--primary-hover:#1e40af;
+    --ring:rgba(37,99,235,0.35);--card-shadow:0 12px 30px rgba(2,6,23,0.08),0 2px 6px rgba(2,6,23,0.06);
+    --accent-bg:rgba(37,99,235,0.06);
+    --danger:#ef4444;--warning:#d97706;
+  }
+  [data-theme="dark"]{
+    --bg:#101114;--panel:rgba(30,31,35,0.7);--panel-border:rgba(255,255,255,0.08);
+    --text:#e6eef8;--muted:#9aa6b2;--primary:#3b82f6;--primary-hover:#60a5fa;
+    --ring:rgba(99,102,241,0.35);--card-shadow:0 18px 36px rgba(0,0,0,0.55),0 2px 8px rgba(0,0,0,0.4);
+    --accent-bg:rgba(59,130,246,0.08);
+  }
+  html,body{height:100%;margin:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 600px at -10% -20%, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%),
+      radial-gradient(900px 500px at 110% -10%, rgba(255,255,255,0.85), rgba(255,255,255,0) 55%),
+      var(--bg);
+    padding:24px;
+    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  }
+  .app{max-width:1100px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:16px}
+  h1{font-size:1.3rem;margin:0;display:flex;gap:10px;align-items:center;font-weight:700}
+  .subtitle{font-size:0.92rem;color:var(--muted)}
+  .theme-btn{background:transparent;border:1px solid transparent;padding:10px;border-radius:12px;cursor:pointer;font-size:18px}
+
+  .logo{height:32px;width:auto;border-radius:10px;opacity:0;transform:translateY(-5px);
+        transition:opacity .4s ease,transform .4s ease}
+  .logo.visible{opacity:1;transform:translateY(0)}
+
+  /* Tabs */
+  .workspace{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+  .tabs{
+    display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+    padding:8px;border-radius:12px;background:var(--panel);border:1px solid var(--panel-border);box-shadow:var(--card-shadow);
+    flex:1;
+  }
+  .tab{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 12px;border:1px solid var(--panel-border);border-radius:999px;background:rgba(255,255,255,0.7);
+    cursor:pointer;user-select:none
+  }
+  [data-theme="dark"] .tab{background:rgba(255,255,255,0.06)}
+  .tab.active{outline:3px solid var(--ring); border-color:var(--primary)}
+  .tab .name{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tab .dot{font-size:18px;line-height:0;color:var(--warning);display:none}
+  .tab.unsaved .dot{display:inline}
+  .tab .close{border:none;background:transparent;color:var(--muted);cursor:pointer;font-weight:800}
+  .tab .close:hover{color:var(--danger)}
+  .new-tab{padding:8px 10px;border-radius:999px;border:1px dashed var(--panel-border);background:transparent;cursor:pointer}
+
+  .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+  .panel{
+    background:var(--panel);
+    backdrop-filter:saturate(1.1) blur(12px);-webkit-backdrop-filter:saturate(1.1) blur(12px);
+    border:1px solid var(--panel-border);padding:16px;border-radius:18px;box-shadow:var(--card-shadow);
+    transition:transform .16s ease,box-shadow .16s ease;animation:fadeSlide .3s ease both
+  }
+  .panel:hover{transform:translateY(-2px)}
+  @keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  label{display:block;margin-top:8px;font-weight:600}
+  input[type=text],input[type=number],select{
+    width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--panel-border);
+    margin-top:6px;background:rgba(255,255,255,0.6);color:var(--text);box-sizing:border-box;
+    transition:border-color .15s,box-shadow .15s,background-color .2s
+  }
+  [data-theme="dark"] input[type=text],[data-theme="dark"] input[type=number],[data-theme="dark"] select{background:rgba(255,255,255,0.03)}
+  input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px var(--ring)}
+  input[type=checkbox],input[type=radio]{margin-right:8px;accent-color:var(--primary)}
+  .flex{display:flex;gap:8px;align-items:center}
+  .col{flex:1}
+  .small{font-size:0.92rem;color:var(--muted)}
+  .muted{color:var(--muted)}
+  button.primary{
+    background:linear-gradient(180deg,var(--primary),var(--primary-hover));color:#fff;border:none;padding:11px 14px;border-radius:14px;
+    font-weight:700;cursor:pointer;transition:transform .12s,filter .12s,box-shadow .12s;
+    box-shadow:0 6px 14px rgba(37,99,235,0.25),inset 0 0 0 1px rgba(255,255,255,0.15)
+  }
+  button.primary:hover{transform:translateY(-2px);filter:saturate(1.05)}
+  button.ghost{background:rgba(255,255,255,0.6);border:1px solid var(--panel-border);padding:9px 12px;border-radius:12px;cursor:pointer}
+  [data-theme="dark"] button.ghost{background:rgba(255,255,255,0.05)}
+  .export-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .export-row button{padding:8px 10px;border-radius:12px;cursor:pointer}
+  .sum-panel{margin-top:10px;display:none}
+
+  /* restored: pill bubbles for people */
+  .person-bubble{
+    display:inline-flex;align-items:center;gap:8px;background:var(--accent-bg);padding:6px 10px;border-radius:999px;
+    margin:6px 6px 0 0;color:var(--text);font-weight:600;border:1px solid var(--panel-border)
+  }
+
+  /* Print: only summaries, not the whole UI */
+  @media print {
+    body{
+      background:#ffffff !important;
+      padding:0 !important;
+    }
+    header,
+    .workspace,
+    #leftCol,
+    #calculateBtn,
+    #resetBtn,
+    #resetAllBtn,
+    #shareLinkBtn,
+    #saveBillBtn,
+    #computeAllBtn,
+    #exportAllBtn,
+    #themeToggle,
+    #langSelect {
+      display:none !important;
+    }
+    .panel{
+      box-shadow:none !important;
+      border:none !important;
+    }
+  }
+
+  @media print {.theme-btn,#shareLinkBtn,#resetBtn,.workspace{display:none !important}}
+</style>
+</head>
+<body data-theme="light">
+<div class="app">
+  <header>
+    <div>
+      <h1><img src="logo.png" alt="Slice logo" class="logo" /> <span data-i18n="title">Slice | Smart Bill Splitter, Simplified.</span></h1>
+      <div class="subtitle" data-i18n="subtitle">Add people, items, tax, tip, service — share or export the result.</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="langSelect" title="Language">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+      </select>
+      <button id="themeToggle" class="theme-btn" title="Toggle light/dark">🌙</button>
+    </div>
+  </header>
+
+  <!-- Tabs bar + actions -->
+  <div class="workspace">
+    <div class="tabs" id="tabs"></div>
+    <button id="saveBillBtn" class="primary" data-i18n="save">Save</button>
+    <button id="computeAllBtn" class="primary" title="Compute totals across all tabs" data-i18n="computeAll">Compute All</button>
+    <button id="exportAllBtn" class="ghost" title="Export combined CSV" data-i18n="exportCombined">Export CSV</button>
+    <button id="saveTemplateBtn" class="ghost" data-i18n="saveTemplate">Save Template</button>
+    <button id="loadTemplateBtn" class="ghost" data-i18n="loadTemplate">Load Template</button>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div id="leftCol">
+      <div class="panel">
+        <label data-i18n="groupName">Group name</label>
+        <input id="groupName" type="text" placeholder="Friday Dinner (optional)">
+        <label style="margin-top:8px" data-i18n="currency">Currency</label>
+        <select id="currencySelect" aria-label="Currency">
+          <option value="USD" selected>USD — $</option>
+          <option value="CAD">CAD — $</option>
+          <option value="EUR">EUR — €</option>
+          <option value="GBP">GBP — £</option>
+          <option value="JPY">JPY — ¥</option>
+          <option value="AUD">AUD — $</option>
+          <option value="NZD">NZD — $</option>
+          <option value="PHP">PHP — ₱</option>
+          <option value="INR">INR — ₹</option>
+          <option value="SGD">SGD — $</option>
+          <option value="CNY">CNY — ¥</option>
+          <option value="HKD">HKD — $</option>
+          <option value="CHF">CHF — ₣</option>
+        </select>
+      </div>
+
+      <!-- People ABOVE Items -->
+      <div class="panel" id="peoplePanel">
+        <label>🧍 <span data-i18n="people">People</span></label>
+        <div class="flex">
+          <input id="personName" type="text" class="col" placeholder="Person name">
+          <label style="display:flex;align-items:center;gap:6px"><input id="personTaxExempt" type="checkbox"><span data-i18n="taxExempt">Tax-exempt</span></label>
+          <button id="addPersonBtn" class="primary" data-i18n="addPerson">Add person</button>
+        </div>
+        <div id="peopleList" class="small" style="margin-top:10px"></div>
+      </div>
+
+      <div class="panel" id="itemsPanel">
+        <label>🍽 <span data-i18n="items">Items</span></label>
+        <div class="flex">
+          <input id="itemName" type="text" class="col" placeholder="Item name">
+          <input id="itemPrice" type="number" min="0" step="0.01" placeholder="Price" style="width:130px">
+        </div>
+        <label style="margin-top:8px"><input id="itemNonTaxable" type="checkbox"> <span data-i18n="nonTaxable">Non-taxable item</span></label>
+        <div id="assignSection" class="small" style="margin-top:8px">
+          <span data-i18n="assignTo">Assign to:</span> 
+          <span id="assignPeople"></span>
+          <div style="margin-top:4px">
+            <button id="assignAllBtn" class="ghost" style="padding:4px 8px;font-size:0.8rem">Assign all</button>
+            <button id="assignLastBtn" class="ghost" style="padding:4px 8px;font-size:0.8rem">Last group</button>
+          </div>
+        </div>
+        <div class="flex" style="margin-top:8px">
+          <button id="addItemBtn" class="ghost" data-i18n="addItem">Add item</button>
+          <button id="clearItemsBtn" class="ghost" data-i18n="clearItems">Clear items</button>
+        </div>
+        <div id="itemsList" class="items-list small" style="margin-top:12px"></div>
+      </div>
+
+      <div class="panel">
+        <label>💰 <span data-i18n="tts">Tax / Tip / Service</span></label>
+        <label data-i18n="taxPercent">Tax percent (%)</label>
+        <input id="taxPercent" type="number" min="0" step="0.01" placeholder="e.g. 13">
+
+        <div style="margin-top:8px; font-weight:700;" data-i18n="tipOptionsTitle">Tip options:</div>
+        <div class="flex" style="align-items:center;gap:10px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="radio" name="tipOption" value="percent" id="tipOptionPercent" checked>
+            <span data-i18n="tipByPercent">Tip by %:</span>
+          </label>
+          <input id="tipPercentBox" type="number" min="0" step="0.01" placeholder="15" style="width:110px" />
+        </div>
+
+        <div class="flex" style="align-items:center;gap:10px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="radio" name="tipOption" value="proportional" id="tipOptionProportional">
+            <span data-i18n="tipByAmount">Tip by amount (proportional):</span>
+          </label>
+          <input id="tipAmountPropBox" type="number" min="0" step="0.01" placeholder="20.00" style="width:110px" />
+        </div>
+
+        <div class="flex" style="align-items:center;gap:10px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="radio" name="tipOption" value="even" id="tipOptionEven">
+            <span data-i18n="tipEven">Split tip evenly:</span>
+          </label>
+          <input id="tipAmountEvenBox" type="number" min="0" step="0.01" placeholder="20.00" style="width:110px" />
+        </div>
+
+        <div style="margin-top:8px">
+          <div style="font-weight:700" data-i18n="tipTiming">Tip timing:</div>
+          <label style="display:block"><input type="radio" name="tipMode" value="before"> <span data-i18n="tipBefore">Tip before tax</span></label>
+          <label style="display:block"><input type="radio" name="tipMode" value="after" checked> <span data-i18n="tipAfter">Tip after tax</span></label>
+        </div>
+
+        <label style="margin-top:8px" data-i18n="servicePercent">Service charge (%)</label>
+        <input id="servicePercent" type="number" min="0" step="0.01" placeholder="e.g. 10">
+
+        <div style="margin-top:8px">
+          <div style="font-weight:700" data-i18n="roundingTitle">Rounding</div>
+          <div class="small" data-i18n="roundingLabel">Round each person’s total to:</div>
+          <select id="roundingSelect">
+            <option value="none" data-i18n="roundingNone">No rounding</option>
+            <option value="0.05" data-i18n="rounding005">Nearest 0.05 (cash)</option>
+            <option value="0.10" data-i18n="rounding010">Nearest 0.10</option>
+            <option value="1" data-i18n="rounding100">Nearest 1.00 (cash-friendly)</option>
+          </select>
+        </div>
+
+        <div class="small" style="margin-top:8px" data-i18n="noteTTS">
+          Tax applies only to taxable items. Tax-exempt people do not pay tax. Tip and service are calculated per-person based on items they ordered (tax-exempt people do not pay tax portion in tip when Tip-after is used).
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <button id="calculateBtn" class="primary" data-i18n="calculate">Calculate</button>
+          <div style="display:flex;gap:8px">
+            <button id="resetBtn" type="button" class="ghost" data-i18n="reset">Reset</button>
+            <button id="resetAllBtn" type="button" class="ghost" data-i18n="resetAll">Reset All Bills</button>
+            <button id="shareLinkBtn" class="ghost" title="Copy shareable link">🔗 <span data-i18n="share">Share</span></button>
+          </div>
+        </div>
+
+        <div id="exportArea" style="margin-top:10px;display:none">
+          <div class="export-row">
+            <button id="copySummaryBtn" class="ghost">📋 <span data-i18n="copySummary">Copy Summary</span></button>
+            <button id="printBtn" class="ghost">🖨 <span data-i18n="print">Print / PDF</span></button>
+            <button id="exportCsvBtn" class="ghost">📄 <span data-i18n="exportCSV">Export CSV</span></button>
+          </div>
+        </div>
+
+        <div id="printContainer">
+          <div id="summaryTitle" style="margin-top:12px;font-size:1.1rem;font-weight:800;display:none;" data-i18n="finalSummary">Final Bill Summary</div>
+          <div id="result" style="margin-top:6px"></div>
+
+          <!-- Combined summary (Compute All) -->
+          <div id="combinedPanel" class="panel sum-panel"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =======================
+   i18n (languages)
+   ======================= */
+const LANG_KEY = 'slice_lang_v2';
+const I18N = {
+  en: {
+    title: "Slice | Smart Bill Splitter, Simplified.",
+    subtitle: "Add people, items, tax, tip, service — share or export the result.",
+    save:"Save", computeAll:"Compute All", exportCombined:"Export CSV",
+    saveTemplate:"Save Template", loadTemplate:"Load Template",
+    groupName:"Group name", currency:"Currency",
+    people:"People", taxExempt:"Tax-exempt", addPerson:"Add person",
+    items:"Items", nonTaxable:"Non-taxable item", assignTo:"Assign to:",
+    addItem:"Add item", clearItems:"Clear items",
+    tts:"Tax / Tip / Service", taxPercent:"Tax percent (%)",
+    tipOptionsTitle:"Tip options:", tipByPercent:"Tip by %:",
+    tipByAmount:"Tip by amount (proportional):", tipEven:"Split tip evenly:",
+    tipTiming:"Tip timing:", tipBefore:"Tip before tax", tipAfter:"Tip after tax",
+    servicePercent:"Service charge (%)",
+    roundingTitle:"Rounding",
+    roundingLabel:"Round each person’s total to:",
+    roundingNone:"No rounding",
+    rounding005:"Nearest 0.05 (cash)",
+    rounding010:"Nearest 0.10",
+    rounding100:"Nearest 1.00 (cash-friendly)",
+    noteTTS:"Tax applies only to taxable items. Tax-exempt people do not pay tax. Tip and service are calculated per-person based on items they ordered (tax-exempt people do not pay tax portion in tip when Tip-after is used).",
+    calculate:"Calculate", reset:"Reset", resetAll:"Reset All Bills", share:"Share",
+    copySummary:"Copy Summary", print:"Print / PDF", exportCSV:"Export CSV",
+    finalSummary:"Final Bill Summary",
+    tablePerson:"Person", tableSubtotal:"Subtotal", tableTax:"Tax",
+    tableService:"Service", tableTip:"Tip", tableTotal:"Total", tablePaid:"Paid",
+    combinedTitle:"All Bills — Combined Summary", grandTotal:"Grand Total",
+    noPeople:"No people yet", addPeopleFirst:"Add people first", untitled:"(Untitled)"
+  },
+  es: {
+    title:"Slice | Divisor de cuentas inteligente, simplificado.",
+    subtitle:"Agrega personas, artículos, impuesto, propina y servicio — comparte o exporta el resultado.",
+    save:"Guardar", computeAll:"Calcular todo", exportCombined:"Exportar CSV",
+    saveTemplate:"Guardar plantilla", loadTemplate:"Cargar plantilla",
+    groupName:"Nombre del grupo", currency:"Moneda",
+    people:"Personas", taxExempt:"Exento de impuestos", addPerson:"Agregar persona",
+    items:"Artículos", nonTaxable:"Artículo no gravable", assignTo:"Asignar a:",
+    addItem:"Agregar artículo", clearItems:"Borrar artículos",
+    tts:"Impuesto / Propina / Servicio", taxPercent:"Porcentaje de impuesto (%)",
+    tipOptionsTitle:"Opciones de propina:", tipByPercent:"Propina por %:",
+    tipByAmount:"Propina por monto (proporcional):", tipEven:"Dividir propina por igual:",
+    tipTiming:"Momento de la propina:", tipBefore:"Antes de impuestos", tipAfter:"Después de impuestos",
+    servicePercent:"Cargo por servicio (%)",
+    roundingTitle:"Redondeo",
+    roundingLabel:"Redondear el total de cada persona a:",
+    roundingNone:"Sin redondeo",
+    rounding005:"Al 0.05 más cercano",
+    rounding010:"Al 0.10 más cercano",
+    rounding100:"Al 1.00 más cercano (efectivo)",
+    noteTTS:"El impuesto se aplica solo a los artículos gravables. Las personas exentas no pagan impuestos. La propina y el servicio se calculan por persona según lo que ordenaron (las personas exentas no pagan la parte del impuesto en la propina cuando se usa Propina después).",
+    calculate:"Calcular", reset:"Restablecer", resetAll:"Restablecer todas las cuentas", share:"Compartir",
+    copySummary:"Copiar resumen", print:"Imprimir / PDF", exportCSV:"Exportar CSV",
+    finalSummary:"Resumen final",
+    tablePerson:"Persona", tableSubtotal:"Subtotal", tableTax:"Impuesto",
+    tableService:"Servicio", tableTip:"Propina", tableTotal:"Total", tablePaid:"Pagado",
+    combinedTitle:"Todas las facturas — Resumen combinado", grandTotal:"Total general",
+    noPeople:"Sin personas aún", addPeopleFirst:"Agrega personas primero", untitled:"(Sin título)"
+  },
+  fr: {
+    title:"Slice | Partage de note intelligent, simplifié.",
+    subtitle:"Ajoutez personnes, articles, taxe, pourboire et service — partagez ou exportez le résultat.",
+    save:"Enregistrer", computeAll:"Tout calculer", exportCombined:"Exporter CSV",
+    saveTemplate:"Enregistrer le modèle", loadTemplate:"Charger le modèle",
+    groupName:"Nom du groupe", currency:"Devise",
+    people:"Personnes", taxExempt:"Exonéré d’impôt", addPerson:"Ajouter une personne",
+    items:"Articles", nonTaxable:"Article non taxable", assignTo:"Attribuer à :",
+    addItem:"Ajouter un article", clearItems:"Effacer les articles",
+    tts:"Taxe / Pourboire / Service", taxPercent:"Pourcentage de taxe (%)",
+    tipOptionsTitle:"Options de pourboire :", tipByPercent:"Pourboire en % :",
+    tipByAmount:"Pourboire par montant (proportionnel) :", tipEven:"Répartir également :",
+    tipTiming:"Moment du pourboire :", tipBefore:"Avant taxe", tipAfter:"Après taxe",
+    servicePercent:"Frais de service (%)",
+    roundingTitle:"Arrondi",
+    roundingLabel:"Arrondir le total de chaque personne à :",
+    roundingNone:"Pas d’arrondi",
+    rounding005:"Au 0,05 le plus proche",
+    rounding010:"Au 0,10 le plus proche",
+    rounding100:"À 1,00 près (espèces)",
+    noteTTS:"La taxe s’applique uniquement aux articles taxables. Les personnes exonérées ne paient pas la taxe. Le pourboire et le service sont calculés par personne selon les articles commandés (les exonérés ne paient pas la part de taxe dans le pourboire quand « Après taxe » est utilisé).",
+    calculate:"Calculer", reset:"Réinitialiser", resetAll:"Réinitialiser toutes les notes", share:"Partager",
+    copySummary:"Copier le résumé", print:"Imprimer / PDF", exportCSV:"Exporter CSV",
+    finalSummary:"Résumé final",
+    tablePerson:"Personne", tableSubtotal:"Sous-total", tableTax:"Taxe",
+    tableService:"Service", tableTip:"Pourboire", tableTotal:"Total", tablePaid:"Payé",
+    combinedTitle:"Toutes les notes — Résumé combiné", grandTotal:"Total général",
+    noPeople:"Pas encore de personnes", addPeopleFirst:"Ajoutez des personnes d’abord", untitled:"(Sans titre)"
+  }
+};
+let lang = localStorage.getItem(LANG_KEY) || 'en';
+function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key; }
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key=el.getAttribute('data-i18n');
+    el.textContent=t(key);
+  });
+}
+
+/* =======================
+   Theme + Logo
+   ======================= */
+const THEME_KEY='bill_splitter_theme_v3';
+window.addEventListener('load',()=>{ const logo=document.querySelector('.logo'); if(logo) requestAnimationFrame(()=>logo.classList.add('visible')); });
+(function initTheme(){
+  const saved=localStorage.getItem(THEME_KEY)||'light';
+  document.documentElement.setAttribute('data-theme', saved==='dark'?'dark':'light');
+  document.body.setAttribute('data-theme', saved==='dark'?'dark':'light');
+  document.getElementById('themeToggle').textContent = saved==='dark'?'☀️':'🌙';
+  document.getElementById('themeToggle').onclick=()=>{
+    const cur=document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light';
+    const next=cur==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme', next==='dark'?'dark':'light');
+    document.body.setAttribute('data-theme', next==='dark'?'dark':'light');
+    localStorage.setItem(THEME_KEY,next);
+    document.getElementById('themeToggle').textContent = next==='dark'?'☀️':'🌙';
+  };
+})();
+
+/* =======================
+   Workspace (Tabs)
+   ======================= */
+const WS_KEY='slice_workspace_tabs_v1';
+const TEMPLATE_KEY='slice_template_v1';
+const BILL_KEY = id => `slice_bill_${id}`;
+const $=id=>document.getElementById(id);
+const uid=(p='id')=>p+Math.random().toString(36).slice(2,9);
+const CURRENCY_SYMBOLS={USD:'$', CAD:'$', EUR:'€', GBP:'£', JPY:'¥', AUD:'$', NZD:'$', PHP:'₱', INR:'₹', SGD:'$', CNY:'¥', HKD:'$', CHF:'₣' };
+
+let workspace={ bills:[], activeId:null };   // {id,name}[]
+let state=defaultState();
+let lastAssignedIds=[];
+
+/* ---------- helpers restored ---------- */
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+/* ------------------------------------- */
+
+function saveWorkspace(){ try{localStorage.setItem(WS_KEY, JSON.stringify(workspace));}catch(e){} }
+function loadWorkspace(){
+  try{ const raw=localStorage.getItem(WS_KEY); if(raw) workspace=JSON.parse(raw); }catch(e){}
+  if(!workspace || !Array.isArray(workspace.bills)) workspace={bills:[],activeId:null};
+}
+
+function defaultState(){
+  return { group:'',people:[],items:[],taxPercent:0,
+           tipOption:'percent',tipPercent:0,tipAmountProportional:0,tipAmountEven:0,
+           servicePercent:0,tipMode:'after',currency:'USD',roundingStep:0 };
+}
+function loadBillState(id){ try{ const raw=localStorage.getItem(BILL_KEY(id)); return raw?JSON.parse(raw):defaultState(); }catch(e){ return defaultState(); } }
+function saveBillState(id, st){ try{ localStorage.setItem(BILL_KEY(id), JSON.stringify(st)); }catch(e){} }
+
+/* Dirty tracking */
+function getActiveId(){ return workspace?.activeId || null; }
+function getSavedSnapshot(){ const id=getActiveId(); return id?loadBillState(id):defaultState(); }
+function isDirty(){ try{ return JSON.stringify(state)!==JSON.stringify(getSavedSnapshot()); }catch(e){ return true; } }
+function markDirtyIfNeeded(){
+  const id=getActiveId(); if(!id) return;
+  const tab=document.querySelector(`.tab[data-id="${id}"]`);
+  if(!tab) return;
+  if(isDirty()) tab.classList.add('unsaved'); else tab.classList.remove('unsaved');
+}
+
+/* Format helpers */
+function fmt(n){
+  const symbol=(state&&state.currency&&CURRENCY_SYMBOLS[state.currency])||'$';
+  const num=Number(n||0);
+  return `${symbol}${num.toFixed(2)}`;
+}
+const parseNum=v=>{ const n=parseFloat(v); return isNaN(n)?0:n; };
+
+/* Inputs <-> state */
+function snapshotInputsIntoState(){
+  state.group=$('groupName').value.trim();
+  state.taxPercent=parseNum($('taxPercent').value);
+  state.tipOption=document.querySelector('input[name="tipOption"]:checked')?.value||'percent';
+  state.tipPercent=parseNum($('tipPercentBox').value);
+  state.tipAmountProportional=parseNum($('tipAmountPropBox').value);
+  state.tipAmountEven=parseNum($('tipAmountEvenBox').value);
+  state.servicePercent=parseNum($('servicePercent').value);
+  state.tipMode=document.querySelector('input[name="tipMode"]:checked')?.value||'after';
+  state.currency=$('currencySelect').value||state.currency;
+  const rv=$('roundingSelect')?.value || 'none';
+  state.roundingStep = rv==='none' ? 0 : (parseFloat(rv)||0);
+}
+function populateInputsFromState(){
+  $('groupName').value=state.group||'';
+  $('taxPercent').value=state.taxPercent||'';
+  $('tipPercentBox').value=state.tipPercent||'';
+  $('tipAmountPropBox').value=state.tipAmountProportional||'';
+  $('tipAmountEvenBox').value=state.tipAmountEven||'';
+  $('servicePercent').value=state.servicePercent||'';
+  $('currencySelect').value=state.currency||'USD';
+  const rv = state.roundingStep ? String(state.roundingStep) : 'none';
+  if($('roundingSelect')) $('roundingSelect').value = rv;
+
+  (state.tipMode==='before'?document.querySelector('input[name="tipMode"][value="before"]'):document.querySelector('input[name="tipMode"][value="after"]'))?.click();
+  if(state.tipOption==='proportional') $('tipOptionProportional').checked=true;
+  else if(state.tipOption==='even') $('tipOptionEven').checked=true;
+  else $('tipOptionPercent').checked=true;
+
+  renderPeople(); renderItems(); renderAssignSection(); renderResult(null);
+  const cp=$('combinedPanel'); cp.innerHTML=''; cp.style.display='none';
+  markDirtyIfNeeded();
+}
+
+/* Tabs UI */
+function renderTabs(){
+  const c=$('tabs'); if(!c) return;
+  c.innerHTML='';
+
+  workspace.bills.forEach((b,i)=>{
+    const tab=document.createElement('div');
+    tab.className='tab'+(b.id===workspace.activeId?' active':'');
+    tab.dataset.id=b.id;
+
+    const dot=document.createElement('span'); dot.className='dot'; dot.textContent='•';
+    const name=document.createElement('span'); name.className='name';
+    const st=loadBillState(b.id);
+    name.textContent=(b.name&&b.name.trim())?b.name.trim():(st.group?.trim()||`Bill ${i+1}`);
+
+    const close=document.createElement('button'); close.className='close'; close.title='Close bill'; close.textContent='×';
+    close.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if (b.id===workspace.activeId){
+        snapshotInputsIntoState();
+        if(isDirty()){
+          const shouldSave = confirm('Save changes before closing this bill? Click "OK" to Save & Close, or "Cancel" to abort closing.');
+          if(!shouldSave) return;
+          saveCurrentBill();
+        }
+      }
+      try{ localStorage.removeItem(BILL_KEY(b.id)); }catch(e){}
+      workspace.bills = workspace.bills.filter(x=>x.id!==b.id);
+      if(workspace.activeId===b.id){
+        workspace.activeId = workspace.bills[0]?.id || null;
+        if(workspace.activeId){ state=loadBillState(workspace.activeId); }
+        else { state=defaultState(); }
+        populateInputsFromState();
+      }
+      saveWorkspace();
+      renderTabs();
+      markDirtyIfNeeded();
+    });
+
+    tab.addEventListener('click',()=>{
+      workspace.activeId=b.id; saveWorkspace();
+      state=loadBillState(b.id);
+      populateInputsFromState();
+      renderTabs();
+      markDirtyIfNeeded();
+    });
+
+    tab.append(dot,name,close);
+    c.appendChild(tab);
+  });
+
+  const btn=document.createElement('button');
+  btn.className='new-tab'; btn.textContent='+ New Bill';
+  btn.title='Create a new bill in a new tab';
+  btn.onclick=()=>newBill();
+  c.appendChild(btn);
+
+  const activeEl=document.querySelector(`.tab[data-id="${workspace.activeId}"]`);
+  if(activeEl){ if(isDirty()) activeEl.classList.add('unsaved'); else activeEl.classList.remove('unsaved'); }
+}
+
+function newBill(){
+  const id=uid('bill_');
+  workspace.bills.push({id, name:''});
+  workspace.activeId=id; saveWorkspace();
+  state=defaultState(); // start unsaved
+  populateInputsFromState();
+  renderTabs();
+  markDirtyIfNeeded();
+}
+
+function saveCurrentBill(){
+  const id=getActiveId(); if(!id){ alert('No active bill.'); return; }
+  snapshotInputsIntoState();
+  saveBillState(id,state);
+  const b=workspace.bills.find(x=>x.id===id);
+  if(b){ b.name = state.group || b.name || ''; saveWorkspace(); }
+  renderTabs();
+  markDirtyIfNeeded();
+}
+
+/* People & Items */
+function renderPeople(){
+  const c=$('peopleList');
+  if(state.people.length===0){
+    c.innerHTML=`<div class="muted">${t('noPeople')}</div>`;
+    renderAssignSection();
+    return;
+  }
+  c.innerHTML=state.people.map(p=>`
+    <div class="person-row" data-id="${p.id}" style="margin-bottom:6px">
+      <span class="person-bubble">
+        ${escapeHtml(p.name)}${p.taxExempt?' (Exempt)':''}
+        <button data-remove-person="${p.id}" style="border:none;background:transparent;color:var(--danger);margin-left:8px;cursor:pointer">×</button>
+      </span>
+      <div class="small" style="margin-top:4px">
+        Discount: <input type="number" data-disc="${p.id}" step="0.01" style="width:80px" value="${p.discount!=null?p.discount:''}">
+        Extra: <input type="number" data-surcharge="${p.id}" step="0.01" style="width:80px" value="${p.surcharge!=null?p.surcharge:''}">
+      </div>
+    </div>
+  `).join('');
+
+  c.querySelectorAll('button[data-remove-person]').forEach(btn=>btn.onclick=()=>{
+    const id=btn.getAttribute('data-remove-person');
+    state.people=state.people.filter(x=>x.id!==id);
+    state.items.forEach(it=>it.assignedIds=(it.assignedIds||[]).filter(a=>a!==id));
+    renderPeople(); renderItems(); renderAssignSection(); markDirtyIfNeeded();
+  });
+
+  c.querySelectorAll('input[data-disc]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const id=inp.getAttribute('data-disc');
+      const p=state.people.find(x=>x.id===id);
+      if(p){ p.discount=parseNum(inp.value); markDirtyIfNeeded(); }
+    });
+  });
+  c.querySelectorAll('input[data-surcharge]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const id=inp.getAttribute('data-surcharge');
+      const p=state.people.find(x=>x.id===id);
+      if(p){ p.surcharge=parseNum(inp.value); markDirtyIfNeeded(); }
+    });
+  });
+
+  renderAssignSection();
+}
+function renderAssignSection(){
+  const c=$('assignPeople');
+  if(state.people.length===0){
+    c.innerHTML=`<span class="muted">${t('addPeopleFirst')}</span>`;
+    return;
+  }
+  c.innerHTML=state.people.map(p=>`<label style="margin-right:8px;display:inline-block"><input type="checkbox" data-personid="${p.id}" /> ${escapeHtml(p.name)}</label>`).join(' ');
+}
+function renderItems(){
+  const c=$('itemsList');
+  if(state.items.length===0){ c.innerHTML='<div class="muted">No items yet</div>'; return; }
+  c.innerHTML=state.items.map(it=>{
+    const names=(it.assignedIds||[]).map(id=>(state.people.find(p=>p.id===id)||{}).name||'').filter(Boolean).join(', ');
+    const unassigned=!it.assignedIds||it.assignedIds.length===0;
+    const taxLabel=it.nonTaxable?'<span class="muted" style="margin-left:8px">(non-taxable)</span>':'';
+    let sharesLabel='';
+    if(it.shares){
+      const parts=(it.assignedIds||[]).map(pid=>{
+        const person=state.people.find(p=>p.id===pid);
+        const sh=(it.shares[pid]!=null?it.shares[pid]:1);
+        return person?`${escapeHtml(person.name)}×${sh}`:'';
+      }).filter(Boolean);
+      if(parts.length>0) sharesLabel=`<span class="muted" style="margin-left:8px">[shares: ${parts.join(', ')}]</span>`;
+    }
+    const assignBtn=unassigned?`<button data-assign="${it.id}" class="ghost" style="margin-left:8px;padding:4px 8px">assign</button>`:'';
+    return `<div id="item-${it.id}">
+      <strong>${escapeHtml(it.name)}</strong> — ${fmt(it.price)} ${taxLabel} 
+      <span class="muted" style="margin-left:8px">[${escapeHtml(names||'unassigned')}]</span>
+      ${sharesLabel}
+      ${assignBtn}
+      <button data-remove="${it.id}" class="ghost" style="margin-left:8px;padding:4px 8px;color:var(--danger)">remove</button>
+      <div class="assign-box" id="assign-box-${it.id}" aria-hidden="true"></div>
+    </div>`;
+  }).join('');
+  c.querySelectorAll('button[data-remove]').forEach(b=>b.onclick=()=>{
+    const id=b.getAttribute('data-remove');
+    state.items=state.items.filter(it=>it.id!==id);
+    renderItems(); renderAssignSection(); markDirtyIfNeeded();
+  });
+  c.querySelectorAll('button[data-assign]').forEach(b=>b.onclick=()=>openAssignBox(b.getAttribute('data-assign')));
+}
+function openAssignBox(itemId){
+  document.querySelectorAll('.assign-box.show').forEach(box=>{box.classList.remove('show');box.setAttribute('aria-hidden','true');box.innerHTML='';});
+  const box=$('assign-box-'+itemId); if(!box) return;
+  const it=state.items.find(i=>i.id===itemId); if(!it) return;
+  if(state.people.length===0){ box.innerHTML=`<div class="muted">${t('addPeopleFirst')}</div>`; box.classList.add('show'); box.setAttribute('aria-hidden','false'); return; }
+  const peopleHtml=state.people.map(p=>{
+    const checked=(it.assignedIds||[]).includes(p.id)?'checked':'';
+    const shareVal = it.shares && it.shares[p.id]!=null ? it.shares[p.id] : 1;
+    return `<div style="margin-bottom:4px;display:inline-block;margin-right:12px">
+      <label>
+        <input type="checkbox" data-pid="${p.id}" ${checked}> ${escapeHtml(p.name)}
+      </label>
+      <input type="number" data-share-for="${p.id}" step="0.1" min="0.1" style="width:60px;margin-left:4px" value="${shareVal}">
+    </div>`;
+  }).join('');
+  box.innerHTML=peopleHtml+`<div class="flex" style="margin-top:8px"><button class="primary save-assign">Save</button><button class="ghost cancel-assign">Cancel</button></div>`;
+  box.classList.add('show'); box.setAttribute('aria-hidden','false');
+  box.querySelector('.cancel-assign').onclick=()=>{ box.classList.remove('show'); box.setAttribute('aria-hidden','true'); box.innerHTML=''; };
+  box.querySelector('.save-assign').onclick=()=>{
+    const checked=Array.from(box.querySelectorAll('input[type=checkbox]:checked')).map(cb=>cb.getAttribute('data-pid'));
+    it.assignedIds=checked;
+    const shares={};
+    checked.forEach(pid=>{
+      const inp=box.querySelector(`input[data-share-for="${pid}"]`);
+      let v=parseFloat(inp?.value||'');
+      if(isNaN(v)||v<=0) v=1;
+      shares[pid]=v;
+    });
+    it.shares=shares;
+    box.classList.remove('show'); box.setAttribute('aria-hidden','true'); box.innerHTML='';
+    renderItems(); renderAssignSection(); markDirtyIfNeeded();
+  };
+}
+
+/* Add / Clear */
+$('addPersonBtn').onclick=()=>{
+  const name=$('personName').value.trim(); const taxExempt=$('personTaxExempt').checked;
+  if(!name) return alert('Enter a name');
+  state.people.push({id:uid('p_'),name,taxExempt:!!taxExempt,discount:0,surcharge:0,paid:false});
+  $('personName').value=''; $('personTaxExempt').checked=false;
+  $('personName').focus();
+  renderPeople(); renderItems(); renderAssignSection(); markDirtyIfNeeded();
+};
+$('addItemBtn').onclick=()=>{
+  if(!state.people || state.people.length===0){ alert(t('addPeopleFirst')); return; }
+  const name=$('itemName').value.trim();
+  const price=Math.round((parseNum($('itemPrice').value)||0)*100)/100;
+  if(!name || price<=0) return alert('Enter valid item name and price');
+  const nonTaxable=$('itemNonTaxable').checked;
+  const assigned=Array.from(document.querySelectorAll('#assignPeople input[type=checkbox]')).filter(cb=>cb.checked).map(cb=>cb.getAttribute('data-personid'));
+  const shares={};
+  assigned.forEach(pid=>{shares[pid]=1;});
+  state.items.push({id:uid('it_'),name,price,assignedIds:assigned,nonTaxable:!!nonTaxable,shares});
+  lastAssignedIds = assigned.slice();
+  $('itemName').value=''; $('itemPrice').value=''; $('itemNonTaxable').checked=false;
+  document.querySelectorAll('#assignPeople input[type=checkbox]').forEach(cb=>cb.checked=false);
+  $('itemName').focus();
+  renderItems(); renderAssignSection(); markDirtyIfNeeded();
+};
+$('clearItemsBtn').onclick=()=>{
+  if(!confirm('Remove all items in this bill?')) return;
+  state.items=[]; renderItems(); renderAssignSection(); markDirtyIfNeeded();
+};
+
+$('assignAllBtn').onclick=()=>{
+  document.querySelectorAll('#assignPeople input[type=checkbox]').forEach(cb=>cb.checked=true);
+};
+$('assignLastBtn').onclick=()=>{
+  if(!lastAssignedIds || lastAssignedIds.length===0) return;
+  document.querySelectorAll('#assignPeople input[type=checkbox]').forEach(cb=>{
+    const pid=cb.getAttribute('data-personid');
+    cb.checked = lastAssignedIds.includes(pid);
+  });
+};
+
+/* Calculation & summary */
+function calcSplit({ people, items, taxPercent, tipOption, tipPercent, tipAmountProportional, tipAmountEven, servicePercent, tipMode }){
+  const per={};
+  people.forEach(p=>{
+    per[p.id]={
+      id:p.id,
+      name:p.name,
+      taxExempt:!!p.taxExempt,
+      discount:parseNum(p.discount),
+      surcharge:parseNum(p.surcharge),
+      paid:!!p.paid,
+      subtotal:0,tax:0,service:0,tip:0,total:0
+    };
+  });
+  let subtotal=0;
+  items.forEach(it=>{
+    if(!it.assignedIds || it.assignedIds.length===0) return;
+    const ids=it.assignedIds;
+    const shares=it.shares || {};
+    let sumShares=0;
+    ids.forEach(pid=>{ sumShares += (shares[pid]!=null?shares[pid]:1); });
+    if(sumShares<=0) sumShares=ids.length;
+    ids.forEach(pid=>{
+      if(per[pid]){
+        const shareVal = (shares[pid]!=null?shares[pid]:1);
+        const shareAmount = it.price * (shareVal/sumShares);
+        per[pid].subtotal += shareAmount;
+      }
+    });
+    subtotal+=it.price;
+  });
+  subtotal=Math.round(subtotal*100)/100;
+  const serviceTotal=Math.round((subtotal*(servicePercent/100))*100)/100;
+  Object.values(per).forEach(p=>p.tax=0);
+  items.forEach(it=>{
+    if(!it.assignedIds || it.assignedIds.length===0 || it.nonTaxable) return;
+    const ids=it.assignedIds;
+    const shares=it.shares || {};
+    let sumShares=0;
+    ids.forEach(pid=>{ sumShares += (shares[pid]!=null?shares[pid]:1); });
+    if(sumShares<=0) sumShares=ids.length;
+    ids.forEach(pid=>{
+      if(per[pid] && !per[pid].taxExempt){
+        const shareVal = (shares[pid]!=null?shares[pid]:1);
+        const shareAmount = it.price * (shareVal/sumShares);
+        per[pid].tax += Math.round((shareAmount*(taxPercent/100))*100)/100;
+      }
+    });
+  });
+  const peopleList=Object.values(per);
+  const subtotalSum=peopleList.reduce((a,b)=>a+b.subtotal,0);
+  peopleList.forEach(p=>{
+    const sh=subtotalSum? (p.subtotal/subtotalSum):0;
+    p.service=Math.round((serviceTotal*sh)*100)/100;
+  });
+  peopleList.forEach(p=>{
+    p.subtotal=Math.round(p.subtotal*100)/100;
+    p.tax=Math.round(p.tax*100)/100;
+    p.service=Math.round(p.service*100)/100;
+  });
+
+  peopleList.forEach(p=>{
+    p._tipBase=(tipMode==='before')?(p.subtotal+p.service):(p.subtotal+p.service+(p.taxExempt?0:p.tax));
+  });
+  if(tipOption==='percent'){
+    peopleList.forEach(p=>p.tip=Math.round((p._tipBase*(tipPercent/100))*100)/100);
+  } else if(tipOption==='proportional'){
+    const baseSum=peopleList.reduce((s,p)=>s+p._tipBase,0);
+    if(baseSum>0) peopleList.forEach(p=>p.tip=Math.round(((p._tipBase/baseSum)*tipAmountProportional)*100)/100);
+    else{
+      const perP=peopleList.length?(tipAmountProportional/peopleList.length):0;
+      peopleList.forEach(p=>p.tip=Math.round(perP*100)/100);
+    }
+  } else if(tipOption==='even'){
+    const perP=peopleList.length?(tipAmountEven/peopleList.length):0;
+    peopleList.forEach(p=>p.tip=Math.round(perP*100)/100);
+  }
+  peopleList.forEach(p=>{
+    p.tip=Math.round(p.tip*100)/100;
+    const rawTotal = p.subtotal+p.tax+p.service+p.tip;
+    p.rawTotal=Math.round(rawTotal*100)/100;
+    const disc=p.discount||0;
+    const sur=p.surcharge||0;
+    let finalTotal = rawTotal - disc + sur;
+    if(finalTotal<0) finalTotal=0;
+    p.total=Math.round(finalTotal*100)/100;
+    delete p._tipBase;
+  });
+
+  const totalTip=peopleList.reduce((s,p)=>s+p.tip,0);
+  const totalTax=peopleList.reduce((s,p)=>s+p.tax,0);
+  const totalService=peopleList.reduce((s,p)=>s+p.service,0);
+  const grandTotal=Math.round(peopleList.reduce((s,p)=>s+p.total,0)*100)/100;
+  return {
+    subtotal:Math.round(subtotal*100)/100,
+    tax:Math.round(totalTax*100)/100,
+    service:Math.round(totalService*100)/100,
+    tip:Math.round(totalTip*100)/100,
+    total:grandTotal,
+    people:peopleList
+  };
+}
+
+function roundToStep(amount, step){
+  if(!step) return amount;
+  return Math.round(amount/step)*step;
+}
+function applyRounding(res){
+  const step = state.roundingStep || 0;
+  if(!step) return res;
+  let roundedGrand = 0;
+  res.people.forEach(p=>{
+    const base = p.total;
+    const r = roundToStep(base, step);
+    p.roundedTotal = Math.round(r*100)/100;
+    p.roundDiff = Math.round((p.roundedTotal - base)*100)/100;
+    roundedGrand += p.roundedTotal;
+  });
+  res.rounding = { step, roundedGrandTotal: Math.round(roundedGrand*100)/100 };
+  return res;
+}
+
+function renderResult(res){
+  const c=$('result');
+  if(!res){
+    c.innerHTML='';
+    $('exportArea').style.display='none';
+    $('summaryTitle').style.display='none';
+    return;
+  }
+  const rows=res.people.map(p=>{
+    const displayTotal = (p.roundedTotal!=null)?p.roundedTotal:p.total;
+    return `<tr>
+      <td>${escapeHtml(p.name)}${p.taxExempt?' (Exempt)':''}</td>
+      <td>${fmt(p.subtotal)}</td>
+      <td>${fmt(p.tax)}</td>
+      <td>${fmt(p.service)}</td>
+      <td>${fmt(p.tip)}</td>
+      <td><strong>${fmt(displayTotal)}</strong></td>
+      <td style="text-align:center"><input type="checkbox" data-paid-id="${p.id}" ${p.paid?'checked':''}></td>
+    </tr>`;
+  }).join('');
+
+  const footTotal = res.rounding ? res.rounding.roundedGrandTotal : res.total;
+
+  c.innerHTML=`<table aria-label="Final split table">
+    <thead><tr>
+      <th>${t('tablePerson')}</th>
+      <th>${t('tableSubtotal')}</th>
+      <th>${t('tableTax')}</th>
+      <th>${t('tableService')}</th>
+      <th>${t('tableTip')}</th>
+      <th>${t('tableTotal')}</th>
+      <th>${t('tablePaid')}</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td>${t('tableTotal')}</td>
+        <td>${fmt(res.subtotal)}</td>
+        <td>${fmt(res.tax)}</td>
+        <td>${fmt(res.service)}</td>
+        <td>${fmt(res.tip)}</td>
+        <td>${fmt(footTotal)}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  ${res.rounding && res.rounding.step ? `<div class="small" style="margin-top:4px">Rounding applied to step ${res.rounding.step.toFixed(2)}. Totals shown after rounding.</div>`:''}
+  `;
+
+  $('exportArea').style.display='block';
+  $('summaryTitle').style.display='block';
+
+  // Paid checkboxes -> persist into state.people
+  c.querySelectorAll('input[data-paid-id]').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const id=cb.getAttribute('data-paid-id');
+      const person=state.people.find(p=>p.id===id);
+      if(person){ person.paid = cb.checked; markDirtyIfNeeded(); }
+    });
+  });
+
+  $('copySummaryBtn').onclick=()=>{
+    let txt=`🍽 ${state.group || t('untitled')}\n`;
+    res.people.forEach(p=>{
+      const displayTotal = (p.roundedTotal!=null)?p.roundedTotal:p.total;
+      txt+=`${p.name} — ${fmt(displayTotal)} (subtotal ${fmt(p.subtotal)}, tax ${fmt(p.tax)}, service ${fmt(p.service)}, tip ${fmt(p.tip)})${p.paid?' [PAID]':''}\n`;
+    });
+    const foot = res.rounding ? res.rounding.roundedGrandTotal : res.total;
+    txt+=`${t('tableTotal')}: ${fmt(foot)}\n`;
+    navigator.clipboard.writeText(txt).then(()=>alert('Summary copied to clipboard!'),()=>alert('Could not copy to clipboard.'));
+  };
+  $('printBtn').onclick=()=>window.print();
+  $('exportCsvBtn').onclick=()=>{
+    let csv=`${t('tablePerson')},${t('tableSubtotal')},${t('tableTax')},${t('tableService')},${t('tableTip')},${t('tableTotal')},${t('tablePaid')}\n`;
+    res.people.forEach(p=>{
+      const displayTotal = (p.roundedTotal!=null)?p.roundedTotal:p.total;
+      csv+=`${p.name},${p.subtotal.toFixed(2)},${p.tax.toFixed(2)},${p.service.toFixed(2)},${p.tip.toFixed(2)},${displayTotal.toFixed(2)},${p.paid?'Y':'N'}\n`;
+    });
+    const foot = res.rounding ? res.rounding.roundedGrandTotal : res.total;
+    csv+=`${t('tableTotal')},${res.subtotal.toFixed(2)},${res.tax.toFixed(2)},${res.service.toFixed(2)},${res.tip.toFixed(2)},${foot.toFixed(2)},\n`;
+    const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='bill-summary.csv'; a.click();
+  };
+}
+
+/* Buttons */
+$('calculateBtn').onclick=()=>{
+  snapshotInputsIntoState();
+  const unassigned = state.items.filter(it=>!it.assignedIds || it.assignedIds.length===0);
+  if(unassigned.length>0){
+    const names = unassigned.slice(0,3).map(it=>it.name||'(unnamed)').join(', ');
+    const msg = `You have ${unassigned.length} unassigned item(s): ${names}${unassigned.length>3?', ...':''}. They will not be included in the split. Continue?`;
+    if(!confirm(msg)) return;
+  }
+  let res=calcSplit(state);
+  res=applyRounding(res);
+  renderResult(res);
+  markDirtyIfNeeded();
+};
+
+$('shareLinkBtn').onclick=()=>{
+  try{
+    snapshotInputsIntoState();
+    const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+    const url=`${location.origin}${location.pathname}?data=${encoded}`;
+    navigator.clipboard.writeText(url).then(()=>alert('Shareable link copied to clipboard!'),()=>alert('Could not copy link.'));
+  }catch(e){ alert('Could not generate share link'); }
+};
+$('saveBillBtn').onclick=()=>{ saveCurrentBill(); alert(t('save')==='Save'?'Saved!':'✔'); };
+
+/* Reset current bill (keep currency) */
+$('resetBtn').onclick=()=>{
+  if(!confirm('This will reset this bill and clear all data for this bill. Continue?')) return;
+  const currentCurrency = state.currency;
+  state=defaultState();
+  state.currency = currentCurrency; // keep selected currency unchanged
+  populateInputsFromState();
+  renderResult(null);
+  const cp=$('combinedPanel'); cp.innerHTML=''; cp.style.display='none';
+  markDirtyIfNeeded(); // remains unsaved until "Save"
+};
+
+/* Reset ALL bills */
+$('resetAllBtn').onclick=()=>{
+  if(!confirm('This will erase ALL bills and their data. This cannot be undone. Continue?')) return;
+  try{
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('slice_bill_') || k===WS_KEY){
+        localStorage.removeItem(k);
+      }
+    });
+  }catch(e){}
+  workspace={bills:[],activeId:null};
+  const id=uid('bill_');
+  workspace.bills.push({id,name:''});
+  workspace.activeId=id;
+  saveWorkspace();
+  state=defaultState();
+  populateInputsFromState();
+  renderTabs();
+  renderResult(null);
+  const cp=$('combinedPanel'); cp.innerHTML=''; cp.style.display='none';
+};
+
+$('currencySelect').addEventListener('change',()=>{ 
+  state.currency=$('currencySelect').value; 
+  markDirtyIfNeeded(); 
+});
+$('roundingSelect').addEventListener('change',()=>{
+  snapshotInputsIntoState();
+  markDirtyIfNeeded();
+});
+
+/* Templates */
+$('saveTemplateBtn').onclick=()=>{
+  snapshotInputsIntoState();
+  const tpl={
+    people: state.people,
+    taxPercent: state.taxPercent,
+    tipOption: state.tipOption,
+    tipPercent: state.tipPercent,
+    tipAmountProportional: state.tipAmountProportional,
+    tipAmountEven: state.tipAmountEven,
+    servicePercent: state.servicePercent,
+    tipMode: state.tipMode,
+    currency: state.currency
+  };
+  try{
+    localStorage.setItem(TEMPLATE_KEY, JSON.stringify(tpl));
+    alert('Template saved.');
+  }catch(e){
+    alert('Could not save template.');
+  }
+};
+$('loadTemplateBtn').onclick=()=>{
+  let raw;
+  try{ raw=localStorage.getItem(TEMPLATE_KEY); }catch(e){}
+  if(!raw){ alert('No template saved yet.'); return; }
+  if(!confirm('Apply saved template to this bill? This will replace current people and tax/tip settings.')) return;
+  try{
+    const tpl=JSON.parse(raw);
+    state.people=(tpl.people||[]).map(p=>({
+      id:p.id||uid('p_'),
+      name:p.name||'',
+      taxExempt:!!p.taxExempt,
+      discount:parseNum(p.discount),
+      surcharge:parseNum(p.surcharge),
+      paid:!!p.paid
+    }));
+    state.taxPercent=tpl.taxPercent||0;
+    state.tipOption=tpl.tipOption||'percent';
+    state.tipPercent=tpl.tipPercent||0;
+    state.tipAmountProportional=tpl.tipAmountProportional||0;
+    state.tipAmountEven=tpl.tipAmountEven||0;
+    state.servicePercent=tpl.servicePercent||0;
+    state.tipMode=tpl.tipMode||'after';
+    state.currency=tpl.currency||state.currency;
+    populateInputsFromState();
+    markDirtyIfNeeded();
+  }catch(e){
+    alert('Template data is invalid.');
+  }
+};
+
+/* Compute All */
+$('computeAllBtn').onclick=()=>{ renderCombinedPanel(); };
+$('exportAllBtn').onclick=()=>{ exportCombinedCSV(); };
+
+function renderCombinedPanel(){
+  const details=[];
+  if(getActiveId()){
+    const res=calcSplit(state);
+    details.push({ name: state.group || getTabNameById(getActiveId()) || t('untitled'), res });
+  }
+  workspace.bills.forEach(b=>{
+    if(b.id===getActiveId()) return;
+    const st=loadBillState(b.id);
+    const res=calcSplit(st);
+    details.push({ name: (b.name||st.group||t('untitled')), res });
+  });
+
+  if(details.length===0){
+    const cp=$('combinedPanel');
+    cp.innerHTML='';
+    cp.style.display='none';
+    return;
+  }
+
+  const billRows=details.map(d=>`
+    <tr>
+      <td style="text-align:left">${escapeHtml(d.name)}</td>
+      <td style="text-align:right">${fmt(d.res.subtotal)}</td>
+      <td style="text-align:right">${fmt(d.res.tax)}</td>
+      <td style="text-align:right">${fmt(d.res.service)}</td>
+      <td style="text-align:right">${fmt(d.res.tip)}</td>
+      <td style="text-align:right"><strong>${fmt(d.res.total)}</strong></td>
+    </tr>`).join('');
+
+  const perPerson={};
+  details.forEach(d=>d.res.people.forEach(p=>{
+    if(!perPerson[p.name]) perPerson[p.name]={subtotal:0,tax:0,service:0,tip:0,total:0};
+    perPerson[p.name].subtotal+=p.subtotal;
+    perPerson[p.name].tax+=p.tax;
+    perPerson[p.name].service+=p.service;
+    perPerson[p.name].tip+=p.tip;
+    perPerson[p.name].total+=p.total;
+  }));
+  const peopleRows=Object.entries(perPerson).map(([name,a])=>`
+    <tr>
+      <td style="text-align:left">${escapeHtml(name)}</td>
+      <td style="text-align:right">${fmt(a.subtotal)}</td>
+      <td style="text-align:right">${fmt(a.tax)}</td>
+      <td style="text-align:right">${fmt(a.service)}</td>
+      <td style="text-align:right">${fmt(a.tip)}</td>
+      <td style="text-align:right"><strong>${fmt(a.total)}</strong></td>
+    </tr>`).join('');
+
+  const sums=details.reduce((s,d)=>({
+    subtotal:s.subtotal+d.res.subtotal,
+    tax:s.tax+d.res.tax,
+    service:s.service+d.res.service,
+    tip:s.tip+d.res.tip,
+    total:s.total+d.res.total
+  }),{subtotal:0,tax:0,service:0,tip:0,total:0});
+  const cp=$('combinedPanel');
+  cp.innerHTML=`
+    <div style="font-weight:800;margin-bottom:8px">${t('combinedTitle')}</div>
+    <div style="font-weight:700;margin-top:6px">By Bill</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="text-align:left">${t('groupName')}</th><th>${t('tableSubtotal')}</th><th>${t('tableTax')}</th><th>${t('tableService')}</th><th>${t('tableTip')}</th><th>${t('tableTotal')}</th></tr></thead>
+      <tbody>${billRows}</tbody>
+      <tfoot><tr><td style="text-align:left"><strong>${t('grandTotal')}</strong></td>
+        <td style="text-align:right">${fmt(sums.subtotal)}</td>
+        <td style="text-align:right">${fmt(sums.tax)}</td>
+        <td style="text-align:right">${fmt(sums.service)}</td>
+        <td style="text-align:right">${fmt(sums.tip)}</td>
+        <td style="text-align:right"><strong>${fmt(sums.total)}</strong></td>
+      </tr></tfoot>
+    </table>
+    <div style="font-weight:700;margin-top:16px">By Person (across all bills)</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="text-align:left">${t('tablePerson')}</th><th>${t('tableSubtotal')}</th><th>${t('tableTax')}</th><th>${t('tableService')}</th><th>${t('tableTip')}</th><th>${t('tableTotal')}</th></tr></thead>
+      <tbody>${peopleRows || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">'+t('noPeople')+'</td></tr>'}</tbody>
+    </table>
+  `;
+  cp.style.display='block';
+}
+function exportCombinedCSV(){
+  const lines=[];
+  lines.push('BILL SUMMARY');
+  lines.push('Bill,Subtotal,Tax,Service,Tip,Total');
+  const details=[];
+  if(getActiveId()) details.push({name: state.group || getTabNameById(getActiveId()) || t('untitled'), res: calcSplit(state)});
+  workspace.bills.forEach(b=>{
+    if(b.id===getActiveId()) return;
+    const st=loadBillState(b.id);
+    details.push({name:(b.name||st.group||t('untitled')), res:calcSplit(st)});
+  });
+  let sumSub=0,sumTax=0,sumServ=0,sumTip=0,sumTot=0;
+  details.forEach(d=>{
+    lines.push(`${d.name.replace(/,/g,' ')},${d.res.subtotal.toFixed(2)},${d.res.tax.toFixed(2)},${d.res.service.toFixed(2)},${d.res.tip.toFixed(2)},${d.res.total.toFixed(2)}`);
+    sumSub+=d.res.subtotal; sumTax+=d.res.tax; sumServ+=d.res.service; sumTip+=d.res.tip; sumTot+=d.res.total;
+  });
+  lines.push(`Grand Total,${sumSub.toFixed(2)},${sumTax.toFixed(2)},${sumServ.toFixed(2)},${sumTip.toFixed(2)},${sumTot.toFixed(2)}`);
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='combined.csv'; a.click();
+}
+function getTabNameById(id){
+  const b=workspace.bills.find(x=>x.id===id);
+  if(!b) return '';
+  const st=loadBillState(id);
+  return (b.name?.trim()) || (st.group?.trim()) || '';
+}
+
+/* URL import */
+(function initFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.has('data')){
+    try{
+      const json=decodeURIComponent(escape(atob(params.get('data'))));
+      const parsed=JSON.parse(json);
+      state=Object.assign(defaultState(), parsed);
+      const id=uid('bill_');
+      workspace.bills.push({id, name: parsed.group||''});
+      workspace.activeId=id; saveWorkspace();
+      saveBillState(id, state);
+      renderTabs();
+      populateInputsFromState(); 
+      let res=calcSplit(state);
+      res=applyRounding(res);
+      renderResult(res);
+      $('exportArea').style.display='block';
+      history.replaceState(null,'',location.pathname);
+    }catch(e){ console.warn('Invalid shared data', e); }
+  }
+})();
+
+/* Initial boot */
+(function init(){
+  // Language init
+  const sel=$('langSelect');
+  sel.value=lang; applyI18n();
+  sel.onchange=()=>{ lang=sel.value; localStorage.setItem(LANG_KEY, lang); applyI18n(); renderResult(null); };
+
+  // Keep People above Items
+  const parent=document.querySelector('#leftCol');
+  const peoplePanel=$('peoplePanel'); const itemsPanel=$('itemsPanel');
+  if(parent&&peoplePanel&&itemsPanel) parent.insertBefore(peoplePanel, itemsPanel);
+
+  loadWorkspace();
+  if(workspace.bills.length===0){
+    const id=uid('bill_'); workspace.bills.push({id,name:''}); workspace.activeId=id; saveWorkspace();
+    state=defaultState();
+  }else{
+    if(!workspace.activeId) workspace.activeId=workspace.bills[0].id;
+    state=loadBillState(workspace.activeId);
+  }
+  renderTabs();
+  populateInputsFromState();
+})();
+
+/* re-mark dirty on changes */
+document.addEventListener('input',(e)=>{
+  const ids=['groupName','taxPercent','tipPercentBox','tipAmountPropBox','tipAmountEvenBox','servicePercent','currencySelect','personName','itemName','itemPrice'];
+  if(ids.includes(e.target.id)){ snapshotInputsIntoState(); markDirtyIfNeeded(); }
+});
+document.addEventListener('change',(e)=>{
+  if(e.target.name==='tipOption' || e.target.name==='tipMode' || e.target.id==='personTaxExempt' || e.target.id==='itemNonTaxable'){
+    snapshotInputsIntoState(); markDirtyIfNeeded();
+  }
+});
+
+/* Enter key shortcuts */
+$('personName').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); $('addPersonBtn').click(); }
+});
+$('itemPrice').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); $('addItemBtn').click(); }
+});
+</script>
+</body>
+</html>
